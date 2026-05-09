@@ -119,8 +119,8 @@ function Pakar() {
         }
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Galat";
-      setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${msg}` }]);
+      console.error("[Pakar] AI error:", e);
+      setMessages((m) => [...m, { role: "assistant", content: "📜 Maaf, Arsip sedang sibuk. Asap dupa pekat dan suara sang pahlawan tertahan. Cobalah bertanya kembali sesaat lagi." }]);
     } finally {
       setLoading(false);
     }
