@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { heroes } from "@/lib/heroes-data";
 import { Calendar, Compass } from "lucide-react";
 import { useScroll, useTransform, motion } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { InteractiveWarMap } from "@/components/InteractiveWarMap";
+import { AudioGuide } from "@/components/AudioGuide";
+import { useGame } from "@/lib/game-context";
 
 export const Route = createFileRoute("/chronicles")({
   head: () => ({
@@ -48,31 +50,55 @@ function ParallaxHero({ hero, idx }: { hero: typeof heroes[number]; idx: number 
 }
 
 function Chronicles() {
+  const { markArticleRead } = useGame();
   return (
     <div className="fade-in cursor-quill">
-      <header className="mx-auto max-w-4xl px-6 pt-16 pb-10 text-center">
+      <header className="mx-auto max-w-4xl px-4 sm:px-6 pt-10 sm:pt-16 pb-8 sm:pb-10 text-center">
         <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Babad · Long Read</div>
-        <h1 className="font-serif text-5xl md:text-6xl text-charcoal mt-4">Catatan Para Penyala Api</h1>
-        <div className="editorial-rule mt-8 mx-auto w-32" />
-        <p className="mt-6 text-charcoal/70 font-serif italic">Gulir perlahan — biarkan parallax menggiring Anda menyusuri zaman.</p>
+        <h1 className="font-serif text-charcoal mt-4">Catatan Para Penyala Api</h1>
+        <div className="editorial-rule mt-6 sm:mt-8 mx-auto w-32" />
+        <p className="mt-5 sm:mt-6 text-charcoal/70 font-serif italic">Gulir perlahan — biarkan parallax menggiring Anda menyusuri zaman.</p>
       </header>
 
       {/* Interactive War Map */}
-      <section className="mx-auto max-w-6xl px-6 mt-6">
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 mt-4 sm:mt-6">
         <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Peta Perang Interaktif</div>
-        <h2 className="font-serif text-3xl mt-2 text-charcoal">Klik titik untuk menelusuri skirmish.</h2>
+        <h2 className="font-serif mt-2 text-charcoal">Klik titik untuk menelusuri skirmish.</h2>
         <InteractiveWarMap />
       </section>
 
       {heroes.map((h, idx) => (
-        <article key={h.id} id={h.id} className="mt-20">
-          <ParallaxHero hero={h} idx={idx} />
-          <div className="mx-auto max-w-4xl px-6 py-16">
-            <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">{h.era}</div>
-            <h2 className="font-serif text-4xl md:text-5xl mt-3 text-charcoal">{h.name}</h2>
-            <p className="mt-2 text-lg italic text-muted-foreground font-serif">{h.title} — {h.region}</p>
+        <Article key={h.id} h={h} idx={idx} onRead={() => markArticleRead(h.id)} />
+      ))}
+    </div>
+  );
+}
 
-            <p className="mt-10 text-lg leading-[1.85] text-charcoal/90 drop-cap">{h.intro}</p>
+function Article({ h, idx, onRead }: { h: typeof heroes[number]; idx: number; onRead: () => void }) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const io = new IntersectionObserver((es) => {
+      es.forEach((e) => { if (e.isIntersecting) { onRead(); io.disconnect(); } });
+    }, { threshold: 0.3 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [onRead]);
+  const audioText = `${h.name}. ${h.title}. ${h.intro} ${h.sections.map((s) => s.heading + ". " + s.body).join(" ")}`;
+  return (
+    <article ref={ref} id={h.id} className="mt-16 sm:mt-20">
+      <ParallaxHero hero={h} idx={idx} />
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 sm:py-16">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">{h.era}</div>
+            <h2 className="font-serif mt-3 text-charcoal">{h.name}</h2>
+            <p className="mt-2 text-base sm:text-lg italic text-muted-foreground font-serif">{h.title} — {h.region}</p>
+          </div>
+          <AudioGuide text={audioText} />
+        </div>
+
+        <p className="mt-8 sm:mt-10 text-base sm:text-lg leading-[1.85] text-charcoal/90 drop-cap">{h.intro}</p>
 
             {h.sections.map((s) => (
               <motion.section
@@ -118,9 +144,8 @@ function Chronicles() {
                 ))}
               </div>
             </section>
-          </div>
-        </article>
-      ))}
-    </div>
+      </div>
+    </article>
   );
 }
+

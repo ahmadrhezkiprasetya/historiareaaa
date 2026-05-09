@@ -8,16 +8,22 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { Heart, Zap, Trophy, BookOpen } from "lucide-react";
+import { Heart, Zap, Trophy, BookOpen, Coins } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { GameProvider, useGame } from "@/lib/game-context";
-import { ViewProvider, useView } from "@/lib/view-context";
+import { ViewProvider } from "@/lib/view-context";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 import { CustomCursor } from "@/components/CustomCursor";
 import { KerisProgress } from "@/components/KerisProgress";
 import { ViewToggle, AudioToggle, LangToggle } from "@/components/Toggles";
 import { AudioController } from "@/components/AudioController";
+import { MobileDock } from "@/components/MobileDock";
+import { LiberationBar } from "@/components/LiberationBar";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { TimeTravel } from "@/components/TimeTravel";
+import { DailyQuest } from "@/components/DailyQuest";
+import { ShakeContainer } from "@/components/ShakeContainer";
 
 function NotFoundComponent() {
   return (
@@ -48,7 +54,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Historia Nusantara — Babad Para Pahlawan" },
       { name: "description", content: "Museum digital editorial: Pangeran Diponegoro, Tuanku Imam Bonjol, dan kisah perlawanan Nusantara." },
     ],
@@ -70,20 +76,24 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function HUD() {
-  const { energy, lives, score } = useGame();
+  const { energy, lives, score, gold } = useGame();
   return (
-    <div className="flex items-center gap-4 text-sm">
-      <span className="flex items-center gap-1.5" title="Nyawa">
+    <div className="flex items-center gap-3 sm:gap-4 text-sm">
+      <span className="flex items-center gap-1" title="Nyawa">
         <Heart className="h-4 w-4 text-maroon fill-maroon" />
         <span className="font-mono tabular-nums">{lives}</span>
       </span>
-      <span className="flex items-center gap-1.5" title="Energi">
+      <span className="flex items-center gap-1" title="Energi">
         <Zap className="h-4 w-4 text-accent fill-accent" />
         <span className="font-mono tabular-nums">{energy}</span>
       </span>
-      <span className="flex items-center gap-1.5" title="Skor">
+      <span className="hidden sm:flex items-center gap-1" title="Skor">
         <Trophy className="h-4 w-4 text-maroon" />
         <span className="font-mono tabular-nums">{score}</span>
+      </span>
+      <span className="flex items-center gap-1" title="Koin Emas">
+        <Coins className="h-4 w-4 text-amber-600" />
+        <span className="font-mono tabular-nums">{gold}</span>
       </span>
     </div>
   );
@@ -101,12 +111,13 @@ function Header() {
   ] as const;
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-parchment/90 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between gap-4">
+      <LiberationBar />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <Link to="/" className="cursor-quill flex items-center gap-2 group">
           <BookOpen className="h-5 w-5 text-maroon" />
           <div className="leading-tight">
             <div className="font-serif text-lg tracking-wide text-maroon">HISTORIA</div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground -mt-0.5">Nusantara · Edisi Pahlawan</div>
+            <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-muted-foreground -mt-0.5">Nusantara · Edisi Pahlawan</div>
           </div>
         </Link>
         <nav className="hidden md:flex items-center gap-5 text-sm">
@@ -119,7 +130,7 @@ function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <HUD />
           <LangToggle />
           <AudioToggle />
@@ -132,8 +143,8 @@ function Header() {
 
 function Footer() {
   return (
-    <footer className="mt-24 border-t border-border">
-      <div className="mx-auto max-w-7xl px-6 py-10 flex flex-col md:flex-row gap-4 justify-between text-xs text-muted-foreground">
+    <footer className="mt-16 md:mt-24 border-t border-border">
+      <div className="mx-auto max-w-7xl px-6 py-8 md:py-10 flex flex-col md:flex-row gap-3 md:gap-4 justify-between text-xs text-muted-foreground">
         <div className="font-serif italic">"Sejarah adalah saksi yang membantah para pendusta zaman."</div>
         <div>© Historia Nusantara · Edisi Pahlawan</div>
       </div>
@@ -158,15 +169,21 @@ function RootComponent() {
       <I18nProvider>
         <ViewProvider>
           <GameProvider>
+            <LoadingScreen />
             <CustomCursor />
             <KerisProgress />
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-1">
-                <RouteSurface />
-              </main>
-              <Footer />
-            </div>
+            <ShakeContainer>
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-1">
+                  <RouteSurface />
+                </main>
+                <Footer />
+              </div>
+            </ShakeContainer>
+            <MobileDock />
+            <TimeTravel />
+            <DailyQuest />
           </GameProvider>
         </ViewProvider>
       </I18nProvider>
