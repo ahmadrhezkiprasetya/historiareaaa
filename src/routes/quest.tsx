@@ -93,6 +93,12 @@ function Quest() {
   const [bossLossless, setBossLossless] = useState(true);
   const _ = goal; // unused but keep destructure shape
 
+  const triggerClash = useCallback((then: "trial" | "boss") => {
+    console.log("[Clash] trigger requested →", then);
+    setClashThen(then);
+    setClash(true);
+  }, []);
+
   const newRound = useCallback((lv: number) => {
     const dropItem = Math.random() < 0.5 ? ITEM_POOL[ri(ITEM_POOL.length)] : null;
     const m = buildMap(lv, dropItem);
