@@ -64,7 +64,7 @@ function Home() {
         <Link to="/pakar" className="group border border-border bg-card p-8 hover:border-maroon transition">
           <Feather className="h-6 w-6 text-maroon" />
           <h3 className="font-serif text-2xl mt-4">Pakar Sejarah</h3>
-          <p className="mt-2 text-sm text-muted-foreground">Bertanya langsung kepada arsiparis AI kami. Bawa kunci API Gemini Anda sendiri.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Bicaralah dengan roh Diponegoro atau Imam Bonjol — AI persona dengan dialek otentik.</p>
           <div className="mt-4 text-xs uppercase tracking-[0.2em] text-maroon group-hover:translate-x-1 transition inline-flex items-center gap-2">
             Mulai Percakapan <ArrowRight className="h-3 w-3" />
           </div>

@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -11,6 +12,12 @@ import { Heart, Zap, Trophy, BookOpen } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { GameProvider, useGame } from "@/lib/game-context";
+import { ViewProvider, useView } from "@/lib/view-context";
+import { I18nProvider, useI18n } from "@/lib/i18n";
+import { CustomCursor } from "@/components/CustomCursor";
+import { KerisProgress } from "@/components/KerisProgress";
+import { ViewToggle, AudioToggle, LangToggle } from "@/components/Toggles";
+import { AudioController } from "@/components/AudioController";
 
 function NotFoundComponent() {
   return (
@@ -43,7 +50,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Historia Nusantara — Babad Para Pahlawan" },
-      { name: "description", content: "Majalah sejarah editorial: Pangeran Diponegoro, Tuanku Imam Bonjol, dan kisah-kisah perlawanan Nusantara." },
+      { name: "description", content: "Museum digital editorial: Pangeran Diponegoro, Tuanku Imam Bonjol, dan kisah perlawanan Nusantara." },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
@@ -83,35 +90,41 @@ function HUD() {
 }
 
 function Header() {
+  const { t } = useI18n();
   const links = [
-    { to: "/", label: "Beranda" },
-    { to: "/chronicles", label: "Babad" },
-    { to: "/pakar", label: "Pakar Sejarah" },
-    { to: "/quest", label: "Quest Gerilya" },
+    { to: "/", label: t("nav.home") },
+    { to: "/chronicles", label: t("nav.chronicles") },
+    { to: "/arsip", label: t("nav.arsip") },
+    { to: "/pakar", label: t("nav.pakar") },
+    { to: "/quest", label: t("nav.quest") },
+    { to: "/medals", label: t("nav.medals") },
   ] as const;
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-parchment/90 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between gap-6">
-        <Link to="/" className="flex items-center gap-2 group">
+      <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between gap-4">
+        <Link to="/" className="cursor-quill flex items-center gap-2 group">
           <BookOpen className="h-5 w-5 text-maroon" />
           <div className="leading-tight">
             <div className="font-serif text-lg tracking-wide text-maroon">HISTORIA</div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground -mt-0.5">Nusantara Edisi Pahlawan</div>
+            <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground -mt-0.5">Nusantara · Edisi Pahlawan</div>
           </div>
         </Link>
-        <nav className="hidden md:flex items-center gap-6 text-sm">
+        <nav className="hidden md:flex items-center gap-5 text-sm">
           {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              className="text-charcoal/80 hover:text-maroon transition relative"
+            <Link key={l.to} to={l.to}
+              className="cursor-quill text-charcoal/80 hover:text-maroon transition relative"
               activeProps={{ className: "text-maroon font-medium" }}
             >
               {l.label}
             </Link>
           ))}
         </nav>
-        <HUD />
+        <div className="flex items-center gap-3">
+          <HUD />
+          <LangToggle />
+          <AudioToggle />
+          <ViewToggle />
+        </div>
       </div>
     </header>
   );
@@ -128,19 +141,35 @@ function Footer() {
   );
 }
 
+function RouteSurface() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <>
+      <AudioController pathname={pathname} />
+      <Outlet />
+    </>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <GameProvider>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <main className="flex-1">
-            <Outlet />
-          </main>
-          <Footer />
-        </div>
-      </GameProvider>
+      <I18nProvider>
+        <ViewProvider>
+          <GameProvider>
+            <CustomCursor />
+            <KerisProgress />
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <main className="flex-1">
+                <RouteSurface />
+              </main>
+              <Footer />
+            </div>
+          </GameProvider>
+        </ViewProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
