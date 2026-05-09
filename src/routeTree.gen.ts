@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as QuestRouteImport } from './routes/quest'
 import { Route as PakarRouteImport } from './routes/pakar'
+import { Route as MedalsRouteImport } from './routes/medals'
 import { Route as ChroniclesRouteImport } from './routes/chronicles'
+import { Route as ArsipRouteImport } from './routes/arsip'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 
@@ -25,9 +27,19 @@ const PakarRoute = PakarRouteImport.update({
   path: '/pakar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MedalsRoute = MedalsRouteImport.update({
+  id: '/medals',
+  path: '/medals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChroniclesRoute = ChroniclesRouteImport.update({
   id: '/chronicles',
   path: '/chronicles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArsipRoute = ArsipRouteImport.update({
+  id: '/arsip',
+  path: '/arsip',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -43,14 +55,18 @@ const ApiChatRoute = ApiChatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/arsip': typeof ArsipRoute
   '/chronicles': typeof ChroniclesRoute
+  '/medals': typeof MedalsRoute
   '/pakar': typeof PakarRoute
   '/quest': typeof QuestRoute
   '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/arsip': typeof ArsipRoute
   '/chronicles': typeof ChroniclesRoute
+  '/medals': typeof MedalsRoute
   '/pakar': typeof PakarRoute
   '/quest': typeof QuestRoute
   '/api/chat': typeof ApiChatRoute
@@ -58,22 +74,48 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/arsip': typeof ArsipRoute
   '/chronicles': typeof ChroniclesRoute
+  '/medals': typeof MedalsRoute
   '/pakar': typeof PakarRoute
   '/quest': typeof QuestRoute
   '/api/chat': typeof ApiChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chronicles' | '/pakar' | '/quest' | '/api/chat'
+  fullPaths:
+    | '/'
+    | '/arsip'
+    | '/chronicles'
+    | '/medals'
+    | '/pakar'
+    | '/quest'
+    | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chronicles' | '/pakar' | '/quest' | '/api/chat'
-  id: '__root__' | '/' | '/chronicles' | '/pakar' | '/quest' | '/api/chat'
+  to:
+    | '/'
+    | '/arsip'
+    | '/chronicles'
+    | '/medals'
+    | '/pakar'
+    | '/quest'
+    | '/api/chat'
+  id:
+    | '__root__'
+    | '/'
+    | '/arsip'
+    | '/chronicles'
+    | '/medals'
+    | '/pakar'
+    | '/quest'
+    | '/api/chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArsipRoute: typeof ArsipRoute
   ChroniclesRoute: typeof ChroniclesRoute
+  MedalsRoute: typeof MedalsRoute
   PakarRoute: typeof PakarRoute
   QuestRoute: typeof QuestRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -95,11 +137,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PakarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/medals': {
+      id: '/medals'
+      path: '/medals'
+      fullPath: '/medals'
+      preLoaderRoute: typeof MedalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chronicles': {
       id: '/chronicles'
       path: '/chronicles'
       fullPath: '/chronicles'
       preLoaderRoute: typeof ChroniclesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/arsip': {
+      id: '/arsip'
+      path: '/arsip'
+      fullPath: '/arsip'
+      preLoaderRoute: typeof ArsipRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -121,7 +177,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArsipRoute: ArsipRoute,
   ChroniclesRoute: ChroniclesRoute,
+  MedalsRoute: MedalsRoute,
   PakarRoute: PakarRoute,
   QuestRoute: QuestRoute,
   ApiChatRoute: ApiChatRoute,
