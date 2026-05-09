@@ -178,7 +178,7 @@ function Quest() {
         // boss time
         awardMedal("first_blood");
         setFlash(`Misi tuntas. Sang Jenderal menanti…`);
-        setTimeout(() => { setClash(true); setClashThen("boss"); }, 700);
+        setTimeout(() => triggerClash("boss"), 600);
       } else {
         setFlash(`Misi tercapai! +50 skor. Misi berikut menanti.`);
         setTimeout(() => newRound(level), 700);
