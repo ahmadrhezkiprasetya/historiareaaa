@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { heroes } from "@/lib/heroes-data";
 import { Calendar, Compass } from "lucide-react";
 import { useScroll, useTransform, motion } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { InteractiveWarMap } from "@/components/InteractiveWarMap";
+import { AudioGuide } from "@/components/AudioGuide";
+import { useGame } from "@/lib/game-context";
 
 export const Route = createFileRoute("/chronicles")({
   head: () => ({
