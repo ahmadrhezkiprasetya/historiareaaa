@@ -13,6 +13,7 @@ import { Route as QuestRouteImport } from './routes/quest'
 import { Route as PakarRouteImport } from './routes/pakar'
 import { Route as ChroniclesRouteImport } from './routes/chronicles'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 
 const QuestRoute = QuestRouteImport.update({
   id: '/quest',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chronicles': typeof ChroniclesRoute
   '/pakar': typeof PakarRoute
   '/quest': typeof QuestRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/chronicles': typeof ChroniclesRoute
   '/pakar': typeof PakarRoute
   '/quest': typeof QuestRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/chronicles': typeof ChroniclesRoute
   '/pakar': typeof PakarRoute
   '/quest': typeof QuestRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chronicles' | '/pakar' | '/quest'
+  fullPaths: '/' | '/chronicles' | '/pakar' | '/quest' | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chronicles' | '/pakar' | '/quest'
-  id: '__root__' | '/' | '/chronicles' | '/pakar' | '/quest'
+  to: '/' | '/chronicles' | '/pakar' | '/quest' | '/api/chat'
+  id: '__root__' | '/' | '/chronicles' | '/pakar' | '/quest' | '/api/chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   ChroniclesRoute: typeof ChroniclesRoute
   PakarRoute: typeof PakarRoute
   QuestRoute: typeof QuestRoute
+  ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,7 +124,18 @@ const rootRouteChildren: RootRouteChildren = {
   ChroniclesRoute: ChroniclesRoute,
   PakarRoute: PakarRoute,
   QuestRoute: QuestRoute,
+  ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
