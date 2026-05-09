@@ -353,16 +353,21 @@ function Quest() {
         </section>
       )}
 
-      <ClashAnimation show={clash} onDone={() => {
-        if (clashThen === "trial") { setTrial(pickQuiz()); setPicked(null); }
-        else if (clashThen === "boss") { setPhase("boss"); }
-        setClash(false); setClashThen(null);
-      }} />
+      <ClashAnimation
+        show={clash}
+        onAutoEnd={() => setClash(false)}
+        onDone={() => {
+          const next = clashThen;
+          setClashThen(null);
+          if (next === "trial") { setTrial(pickQuiz()); setPicked(null); }
+          else if (next === "boss") { setPhase("boss"); }
+        }}
+      />
 
       <AnimatePresence>
         {trial && !clash && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-charcoal/80 flex items-center justify-center p-4">
+            className="fixed inset-0 z-[100] bg-charcoal/85 flex items-center justify-center p-4 isolate">
             <div className="bg-parchment border-2 border-maroon max-w-xl w-full p-8 shadow-2xl">
               <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Knowledge Trial · {trial.topic}</div>
               <h3 className="font-serif text-2xl mt-3 text-charcoal">{trial.question}</h3>
