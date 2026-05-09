@@ -93,6 +93,12 @@ function Quest() {
   const [bossLossless, setBossLossless] = useState(true);
   const _ = goal; // unused but keep destructure shape
 
+  const triggerClash = useCallback((then: "trial" | "boss") => {
+    console.log("[Clash] trigger requested →", then);
+    setClashThen(then);
+    setClash(true);
+  }, []);
+
   const newRound = useCallback((lv: number) => {
     const dropItem = Math.random() < 0.5 ? ITEM_POOL[ri(ITEM_POOL.length)] : null;
     const m = buildMap(lv, dropItem);
@@ -117,12 +123,12 @@ function Quest() {
     }
   }, [lives, phase]);
 
-  // energy 0 → trial
+  // energy 0 → trial via clash
   useEffect(() => {
     if (phase === "playing" && energy <= 0 && !trial && !clash) {
-      setClash(true); setClashThen("trial");
+      triggerClash("trial");
     }
-  }, [energy, phase, trial, clash]);
+  }, [energy, phase, trial, clash, triggerClash]);
 
   function revealAt(p: Pos, t: Tile[][]) {
     const c = t.map((r) => r.map((x) => ({ ...x })));
@@ -144,15 +150,15 @@ function Quest() {
     const tile = newTiles[target.r][target.c];
 
     if (tile.kind === "enemy") {
+      newTiles[target.r][target.c].kind = "empty";
+      setMap((m) => ({ ...m, tiles: newTiles }));
       if (inventory.sorban > 0) {
         useItem("sorban");
         setFlash("Sorban Putih melindungi Anda dari patroli!");
       } else {
-        loseLife();
-        setFlash("Patroli Belanda! −1 nyawa.");
+        setFlash("Patroli Belanda! Hadapi dalam Knowledge Trial.");
+        triggerClash("trial");
       }
-      newTiles[target.r][target.c].kind = "empty";
-      setMap((m) => ({ ...m, tiles: newTiles }));
     } else if (tile.kind === "supply") {
       restoreEnergy(20); addScore(5);
       newTiles[target.r][target.c].kind = "empty";
@@ -172,7 +178,7 @@ function Quest() {
         // boss time
         awardMedal("first_blood");
         setFlash(`Misi tuntas. Sang Jenderal menanti…`);
-        setTimeout(() => { setClash(true); setClashThen("boss"); }, 700);
+        setTimeout(() => triggerClash("boss"), 600);
       } else {
         setFlash(`Misi tercapai! +50 skor. Misi berikut menanti.`);
         setTimeout(() => newRound(level), 700);
@@ -347,16 +353,21 @@ function Quest() {
         </section>
       )}
 
-      <ClashAnimation show={clash} onDone={() => {
-        if (clashThen === "trial") { setTrial(pickQuiz()); setPicked(null); }
-        else if (clashThen === "boss") { setPhase("boss"); }
-        setClash(false); setClashThen(null);
-      }} />
+      <ClashAnimation
+        show={clash}
+        onAutoEnd={() => setClash(false)}
+        onDone={() => {
+          const next = clashThen;
+          setClashThen(null);
+          if (next === "trial") { setTrial(pickQuiz()); setPicked(null); }
+          else if (next === "boss") { setPhase("boss"); }
+        }}
+      />
 
       <AnimatePresence>
         {trial && !clash && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-charcoal/80 flex items-center justify-center p-4">
+            className="fixed inset-0 z-[100] bg-charcoal/85 flex items-center justify-center p-4 isolate">
             <div className="bg-parchment border-2 border-maroon max-w-xl w-full p-8 shadow-2xl">
               <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Knowledge Trial · {trial.topic}</div>
               <h3 className="font-serif text-2xl mt-3 text-charcoal">{trial.question}</h3>
