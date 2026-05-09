@@ -123,12 +123,12 @@ function Quest() {
     }
   }, [lives, phase]);
 
-  // energy 0 → trial
+  // energy 0 → trial via clash
   useEffect(() => {
     if (phase === "playing" && energy <= 0 && !trial && !clash) {
-      setClash(true); setClashThen("trial");
+      triggerClash("trial");
     }
-  }, [energy, phase, trial, clash]);
+  }, [energy, phase, trial, clash, triggerClash]);
 
   function revealAt(p: Pos, t: Tile[][]) {
     const c = t.map((r) => r.map((x) => ({ ...x })));
