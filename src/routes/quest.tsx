@@ -150,15 +150,15 @@ function Quest() {
     const tile = newTiles[target.r][target.c];
 
     if (tile.kind === "enemy") {
+      newTiles[target.r][target.c].kind = "empty";
+      setMap((m) => ({ ...m, tiles: newTiles }));
       if (inventory.sorban > 0) {
         useItem("sorban");
         setFlash("Sorban Putih melindungi Anda dari patroli!");
       } else {
-        loseLife();
-        setFlash("Patroli Belanda! −1 nyawa.");
+        setFlash("Patroli Belanda! Hadapi dalam Knowledge Trial.");
+        triggerClash("trial");
       }
-      newTiles[target.r][target.c].kind = "empty";
-      setMap((m) => ({ ...m, tiles: newTiles }));
     } else if (tile.kind === "supply") {
       restoreEnergy(20); addScore(5);
       newTiles[target.r][target.c].kind = "empty";
