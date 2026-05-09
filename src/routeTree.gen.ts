@@ -9,8 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as QuestRouteImport } from './routes/quest'
+import { Route as PakarRouteImport } from './routes/pakar'
+import { Route as ChroniclesRouteImport } from './routes/chronicles'
 import { Route as IndexRouteImport } from './routes/index'
 
+const QuestRoute = QuestRouteImport.update({
+  id: '/quest',
+  path: '/quest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PakarRoute = PakarRouteImport.update({
+  id: '/pakar',
+  path: '/pakar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChroniclesRoute = ChroniclesRouteImport.update({
+  id: '/chronicles',
+  path: '/chronicles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +37,61 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/chronicles': typeof ChroniclesRoute
+  '/pakar': typeof PakarRoute
+  '/quest': typeof QuestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/chronicles': typeof ChroniclesRoute
+  '/pakar': typeof PakarRoute
+  '/quest': typeof QuestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/chronicles': typeof ChroniclesRoute
+  '/pakar': typeof PakarRoute
+  '/quest': typeof QuestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/chronicles' | '/pakar' | '/quest'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/chronicles' | '/pakar' | '/quest'
+  id: '__root__' | '/' | '/chronicles' | '/pakar' | '/quest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChroniclesRoute: typeof ChroniclesRoute
+  PakarRoute: typeof PakarRoute
+  QuestRoute: typeof QuestRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/quest': {
+      id: '/quest'
+      path: '/quest'
+      fullPath: '/quest'
+      preLoaderRoute: typeof QuestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pakar': {
+      id: '/pakar'
+      path: '/pakar'
+      fullPath: '/pakar'
+      preLoaderRoute: typeof PakarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chronicles': {
+      id: '/chronicles'
+      path: '/chronicles'
+      fullPath: '/chronicles'
+      preLoaderRoute: typeof ChroniclesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +104,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChroniclesRoute: ChroniclesRoute,
+  PakarRoute: PakarRoute,
+  QuestRoute: QuestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
