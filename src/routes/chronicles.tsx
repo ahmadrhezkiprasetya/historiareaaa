@@ -144,9 +144,8 @@ function Article({ h, idx, onRead }: { h: typeof heroes[number]; idx: number; on
                 ))}
               </div>
             </section>
-          </div>
-        </article>
-      ))}
-    </div>
+      </div>
+    </article>
   );
 }
+
