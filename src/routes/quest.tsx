@@ -1,63 +1,147 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Footprints, Swords, Eye, Mountain, RefreshCcw, Heart, Zap, Trophy, ScrollText } from "lucide-react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { MapPin, Sword, Flag, Apple, Trees, RefreshCcw, Heart, Zap, Trophy, Award, ScrollText, Play } from "lucide-react";
 import { useGame } from "@/lib/game-context";
 import { quizBank, type QuizQuestion } from "@/lib/quiz-data";
 
 export const Route = createFileRoute("/quest")({
   head: () => ({
     meta: [
-      { title: "Quest Gerilya — Historia Nusantara" },
-      { name: "description", content: "Permainan strategi gerilya: kelola energi, nyawa, dan pengetahuan sejarah Anda." },
+      { title: "Quest Gerilya — Tactical Survival Map" },
+      { name: "description", content: "Permainan strategi peta gerilya: jelajahi medan perang, hindari patroli Belanda, dan capai tujuan misi." },
     ],
   }),
   component: Quest,
 });
 
-type Action = { id: string; label: string; cost: number; reward: number; icon: React.ComponentType<{ className?: string }>; flavor: string[] };
+const SIZE = 5;
+type TileKind = "empty" | "enemy" | "supply" | "goal";
+type Tile = { kind: TileKind; revealed: boolean };
+type Pos = { r: number; c: number };
 
-const actions: Action[] = [
-  { id: "march", label: "Berbaris", cost: 10, reward: 5, icon: Footprints, flavor: ["Pasukan menyusuri lembah Selarong tanpa terlihat.", "Pijak demi pijak, kabut menutupi jejak gerilya."] },
-  { id: "scout", label: "Intai", cost: 15, reward: 10, icon: Eye, flavor: ["Mata-mata kembali membawa peta posisi Belanda.", "Suatu kafilah kolonial terlihat menuju Magelang."] },
-  { id: "ambush", label: "Sergap", cost: 30, reward: 25, icon: Swords, flavor: ["Sergapan kilat di tikungan jalan — musuh kalang-kabut.", "Tiga gerobak amunisi berhasil dirampas."] },
-  { id: "fortify", label: "Bangun Benteng", cost: 25, reward: 15, icon: Mountain, flavor: ["Benteng tanah baru berdiri di tepi sungai.", "Bambu runcing ditanam mengelilingi surau."] },
+const QUOTES = [
+  "“Sekali merdeka, tetap merdeka.” — semangat para pejuang.",
+  "“Adat basandi syarak, syarak basandi Kitabullah.” — Imam Bonjol",
+  "“Lawan penjajah dengan iman dan strategi.” — pesan gerilya",
+  "“Tegalrejo boleh dibakar, tapi semangat tak padam.” — Diponegoro",
 ];
 
+function randInt(n: number) { return Math.floor(Math.random() * n); }
+function randPos(): Pos { return { r: randInt(SIZE), c: randInt(SIZE) }; }
+function eq(a: Pos, b: Pos) { return a.r === b.r && a.c === b.c; }
+function adjacent(a: Pos, b: Pos) { return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1; }
+
+function buildMap(): { tiles: Tile[][]; start: Pos; goal: Pos } {
+  const tiles: Tile[][] = Array.from({ length: SIZE }, () =>
+    Array.from({ length: SIZE }, () => ({ kind: "empty" as TileKind, revealed: false }))
+  );
+  const start = randPos();
+  let goal = randPos();
+  while (eq(goal, start)) goal = randPos();
+  tiles[goal.r][goal.c].kind = "goal";
+
+  const taken = new Set<string>([`${start.r},${start.c}`, `${goal.r},${goal.c}`]);
+  const place = (kind: TileKind, count: number) => {
+    let placed = 0;
+    while (placed < count) {
+      const p = randPos();
+      const key = `${p.r},${p.c}`;
+      if (taken.has(key)) continue;
+      tiles[p.r][p.c].kind = kind;
+      taken.add(key);
+      placed++;
+    }
+  };
+  place("enemy", 5);
+  place("supply", 4);
+  tiles[start.r][start.c].revealed = true;
+  return { tiles, start, goal };
+}
+
 function pickQuiz(): QuizQuestion {
-  return quizBank[Math.floor(Math.random() * quizBank.length)];
+  return quizBank[Math.floor(Math.random() * Math.min(quizBank.length, 10))];
 }
 
 function Quest() {
   const { energy, lives, score, spend, restoreEnergy, loseLife, addScore, reset } = useGame();
-  const [log, setLog] = useState<string[]>(["Anda berdiri di mulut Goa Selarong. Embun pagi turun. Quest dimulai."]);
+  const [phase, setPhase] = useState<"briefing" | "playing" | "captured">("briefing");
+  const [{ tiles, start, goal }, setMap] = useState(() => buildMap());
+  const [pos, setPos] = useState<Pos>(start);
+  const [wins, setWins] = useState(0);
   const [trial, setTrial] = useState<QuizQuestion | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
+  const [flash, setFlash] = useState<string>("");
 
-  const gameOver = lives <= 0;
+  const newRound = useCallback(() => {
+    const m = buildMap();
+    setMap(m);
+    setPos(m.start);
+  }, []);
 
-  function pushLog(s: string) {
-    setLog((l) => [s, ...l].slice(0, 12));
-  }
+  const startGame = () => {
+    reset();
+    setWins(0);
+    newRound();
+    setPhase("playing");
+    setFlash("Misi dimulai. Capai bendera tanpa terjebak patroli.");
+  };
 
-  function doAction(a: Action) {
-    if (gameOver || trial) return;
-    if (energy < a.cost) {
-      pushLog(`Energi tak cukup untuk ${a.label}. Saatnya Knowledge Trial!`);
+  // Trigger trial when energy hits 0
+  useEffect(() => {
+    if (phase === "playing" && energy <= 0 && !trial) {
       setTrial(pickQuiz());
       setPicked(null);
-      return;
     }
-    spend(a.cost);
-    addScore(a.reward);
-    pushLog(`${a.label} (+${a.reward} skor, −${a.cost} energi). ${a.flavor[Math.floor(Math.random() * a.flavor.length)]}`);
+  }, [energy, phase, trial]);
 
-    // After spending, if energy reached 0, trigger trial
-    if (energy - a.cost <= 0) {
-      setTimeout(() => {
-        pushLog("Pasukan kelelahan. Knowledge Trial dimulai untuk memulihkan energi.");
-        setTrial(pickQuiz());
-        setPicked(null);
-      }, 200);
+  // Capture when out of lives
+  useEffect(() => {
+    if (phase === "playing" && lives <= 0) {
+      setPhase("captured");
+      setTrial(null);
+    }
+  }, [lives, phase]);
+
+  function revealAt(p: Pos, t: Tile[][]) {
+    const copy = t.map((row) => row.map((x) => ({ ...x })));
+    copy[p.r][p.c].revealed = true;
+    return copy;
+  }
+
+  function tryMove(target: Pos) {
+    if (phase !== "playing" || trial) return;
+    if (!adjacent(pos, target)) { setFlash("Hanya bisa pindah ke tile bersebelahan."); return; }
+    if (energy < 10) { setFlash("Energi tak cukup. Knowledge Trial akan dimulai."); return; }
+
+    spend(10);
+    const newTiles = revealAt(target, tiles);
+    setMap((m) => ({ ...m, tiles: newTiles }));
+    setPos(target);
+
+    const tile = newTiles[target.r][target.c];
+    if (tile.kind === "enemy") {
+      loseLife();
+      setFlash("Patroli Belanda! Anda kehilangan 1 nyawa.");
+      // consume the enemy
+      newTiles[target.r][target.c].kind = "empty";
+      setMap((m) => ({ ...m, tiles: newTiles }));
+    } else if (tile.kind === "supply") {
+      restoreEnergy(20);
+      addScore(5);
+      newTiles[target.r][target.c].kind = "empty";
+      setMap((m) => ({ ...m, tiles: newTiles }));
+      setFlash("Logistik diamankan. +20 energi, +5 skor.");
+    } else if (tile.kind === "goal") {
+      addScore(50);
+      const w = wins + 1;
+      setWins(w);
+      setFlash(`Misi tercapai! +50 skor. (${w}/3)`);
+      if (w >= 3) {
+        // keep playing but flag victory; show badge in UI
+      }
+      setTimeout(() => newRound(), 700);
+    } else {
+      setFlash("Hutan sunyi. Anda melanjutkan perjalanan.");
     }
   }
 
@@ -67,90 +151,139 @@ function Quest() {
     const correct = idx === trial.answer;
     setTimeout(() => {
       if (correct) {
-        restoreEnergy(50);
-        addScore(20);
-        pushLog(`Benar! Pengetahuan tentang ${trial.topic} memulihkan 50 energi (+20 skor).`);
+        restoreEnergy(100);
+        addScore(15);
+        setFlash(`Benar! Pengetahuan tentang ${trial.topic} memulihkan energi penuh.`);
       } else {
         loseLife();
-        pushLog(`Salah. Anda kehilangan 1 nyawa. Jawaban benar: "${trial.options[trial.answer]}".`);
+        setFlash(`Salah. "${trial.options[trial.answer]}". Anda dipulangkan ke titik awal.`);
+        setPos(start);
+        restoreEnergy(50);
       }
       setTrial(null);
       setPicked(null);
-    }, 900);
+    }, 800);
   }
 
-  const energyPct = useMemo(() => Math.max(0, Math.min(100, energy)), [energy]);
+  const quote = useMemo(() => QUOTES[randInt(QUOTES.length)], [phase]);
+  const energyPct = Math.max(0, Math.min(100, energy));
 
   return (
     <div className="fade-in mx-auto max-w-6xl px-6 py-12">
       <header className="border-b border-border pb-6">
         <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Mode Permainan</div>
-        <h1 className="font-serif text-5xl text-charcoal mt-2">Quest Gerilya</h1>
+        <h1 className="font-serif text-5xl text-charcoal mt-2">Tactical Survival Map</h1>
         <p className="mt-2 text-muted-foreground italic font-serif max-w-2xl">
-          Pimpin pasukan kecil di rimba dan ngarai Nusantara. Setiap aksi memakan energi. Saat energi habis, hanya pengetahuan sejarah yang dapat menyelamatkan Anda.
+          Sebuah simulasi gerilya 5×5. Hindari patroli, kumpulkan logistik, capai bendera misi tiga kali untuk meraih gelar Pahlawan Nasional.
         </p>
       </header>
 
       {/* Stats */}
-      <section className="mt-8 grid grid-cols-3 gap-4">
+      <section className="mt-6 grid grid-cols-4 gap-3">
         <Stat icon={Heart} label="Nyawa" value={lives} max={3} color="bg-maroon" />
         <Stat icon={Zap} label="Energi" value={energyPct} max={100} color="bg-accent" showBar />
         <Stat icon={Trophy} label="Skor" value={score} color="bg-charcoal" />
+        <Stat icon={Award} label="Misi" value={wins} max={3} color="bg-maroon" />
       </section>
 
-      <section className="mt-8 grid lg:grid-cols-3 gap-6">
-        {/* Actions */}
-        <div className="lg:col-span-2 border border-border bg-card p-6">
-          <h2 className="font-serif text-2xl text-maroon">Aksi Gerilya</h2>
-          <div className="editorial-rule mt-3 w-16" />
-          <div className="grid sm:grid-cols-2 gap-4 mt-6">
-            {actions.map((a) => {
-              const Icon = a.icon;
-              const disabled = gameOver || !!trial;
-              return (
-                <button
-                  key={a.id}
-                  onClick={() => doAction(a)}
-                  disabled={disabled}
-                  className="group text-left border border-border p-5 hover:border-maroon hover:bg-maroon hover:text-parchment transition disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Icon className="h-6 w-6 text-maroon group-hover:text-parchment transition" />
-                  <div className="font-serif text-xl mt-3">{a.label}</div>
-                  <div className="mt-1 text-xs uppercase tracking-[0.2em] opacity-75">−{a.cost} energi · +{a.reward} skor</div>
-                </button>
-              );
-            })}
+      {phase === "briefing" && (
+        <Briefing onStart={startGame} />
+      )}
+
+      {phase === "captured" && (
+        <Captured score={score} quote={quote} onRestart={() => { reset(); setWins(0); newRound(); setPhase("briefing"); }} />
+      )}
+
+      {phase === "playing" && (
+        <section className="mt-8 grid lg:grid-cols-3 gap-6">
+          {/* War Map */}
+          <div className="lg:col-span-2 relative p-5 rounded-sm shadow-2xl"
+            style={{
+              background: "repeating-linear-gradient(90deg, #3b2417 0px, #4a2d1c 4px, #3b2417 8px, #2e1c12 12px), #2e1c12",
+              boxShadow: "inset 0 0 60px rgba(0,0,0,0.6), 0 20px 40px rgba(0,0,0,0.4)",
+            }}>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-amber-200/80 mb-3 font-serif">War Map · Hutan & Benteng</div>
+            <div className="grid grid-cols-5 gap-2">
+              {tiles.map((row, r) =>
+                row.map((tile, c) => {
+                  const here = pos.r === r && pos.c === c;
+                  const isAdj = adjacent(pos, { r, c });
+                  const isGoal = tile.kind === "goal";
+                  const reveal = tile.revealed || here;
+
+                  let bg = "bg-emerald-900/70 border-emerald-700"; // forest
+                  if (reveal) {
+                    if (tile.kind === "enemy") bg = "bg-red-900/80 border-red-700";
+                    else if (tile.kind === "supply") bg = "bg-amber-700/70 border-amber-500";
+                    else if (isGoal) bg = "bg-yellow-500 border-yellow-300";
+                    else bg = "bg-emerald-800/80 border-emerald-600";
+                  }
+
+                  return (
+                    <button
+                      key={`${r}-${c}`}
+                      onClick={() => tryMove({ r, c })}
+                      disabled={!isAdj || !!trial}
+                      className={`aspect-square border-2 ${bg} relative flex items-center justify-center transition-all duration-150
+                        ${isAdj && !trial ? "hover:scale-105 hover:ring-2 hover:ring-amber-300 cursor-pointer" : "cursor-default"}
+                        ${here ? "ring-2 ring-amber-200 scale-105" : ""}`}
+                      aria-label={`Tile ${r},${c}`}
+                    >
+                      {here ? (
+                        <MapPin className="h-6 w-6 text-amber-100 drop-shadow" />
+                      ) : reveal && tile.kind === "enemy" ? (
+                        <Sword className="h-5 w-5 text-red-100" />
+                      ) : reveal && tile.kind === "supply" ? (
+                        <Apple className="h-5 w-5 text-amber-50" />
+                      ) : reveal && isGoal ? (
+                        <Flag className="h-6 w-6 text-maroon" />
+                      ) : (
+                        <Trees className="h-4 w-4 text-emerald-300/60" />
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-amber-100/80 font-serif">
+              <Legend swatch="bg-emerald-800" label="Hutan" />
+              <Legend swatch="bg-red-900" label="Patroli Belanda" />
+              <Legend swatch="bg-amber-700" label="Logistik" />
+              <Legend swatch="bg-yellow-500" label="Tujuan Misi" />
+            </div>
           </div>
 
-          {gameOver && (
-            <div className="mt-6 border border-maroon bg-maroon/5 p-5 text-center">
-              <div className="font-serif text-2xl text-maroon">Pasukan tumbang.</div>
-              <p className="mt-2 text-sm text-charcoal/80">Skor akhir: <strong>{score}</strong>. Setiap perlawanan butuh ingatan.</p>
-              <button onClick={reset} className="mt-4 inline-flex items-center gap-2 bg-maroon text-parchment px-5 py-2 hover:bg-maroon-deep">
-                <RefreshCcw className="h-4 w-4" /> Mulai Ulang
-              </button>
+          {/* Side panel */}
+          <div className="border border-border bg-card p-6">
+            <h2 className="font-serif text-2xl text-maroon flex items-center gap-2"><ScrollText className="h-5 w-5" /> Catatan Lapangan</h2>
+            <div className="editorial-rule mt-3 w-16" />
+            <p className="mt-4 text-sm text-charcoal leading-relaxed font-serif">{flash}</p>
+            <div className="mt-6 text-xs text-muted-foreground space-y-1">
+              <p>• Pindah ke tile bersebelahan: <strong>−10 energi</strong></p>
+              <p>• Patroli: <strong>−1 nyawa</strong></p>
+              <p>• Logistik: <strong>+20 energi</strong></p>
+              <p>• Bendera: <strong>+50 skor</strong>, peta diacak ulang</p>
+              <p>• Energi 0 → <strong>Knowledge Trial</strong></p>
             </div>
-          )}
-        </div>
-
-        {/* Log */}
-        <div className="border border-border bg-card p-6">
-          <h2 className="font-serif text-2xl text-maroon flex items-center gap-2"><ScrollText className="h-5 w-5" /> Catatan Harian</h2>
-          <div className="editorial-rule mt-3 w-16" />
-          <ol className="mt-4 space-y-3 text-sm">
-            {log.map((l, i) => (
-              <li key={i} className={`leading-relaxed ${i === 0 ? "text-charcoal" : "text-muted-foreground"}`}>
-                <span className="font-serif text-maroon mr-2">§</span>{l}
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
+            {wins >= 3 && (
+              <div className="mt-6 border border-maroon bg-maroon/10 p-4 text-center">
+                <Award className="h-8 w-8 text-maroon mx-auto" />
+                <div className="font-serif text-xl text-maroon mt-2">Pahlawan Nasional</div>
+                <p className="text-xs text-muted-foreground mt-1">Tiga misi tuntas. Nama Anda terukir di babad.</p>
+              </div>
+            )}
+            <button onClick={() => { reset(); setWins(0); newRound(); setPhase("briefing"); }}
+              className="mt-6 w-full inline-flex items-center justify-center gap-2 border border-border px-4 py-2 hover:bg-maroon hover:text-parchment hover:border-maroon transition">
+              <RefreshCcw className="h-4 w-4" /> Mulai Ulang
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Trial modal */}
       {trial && (
-        <div className="fixed inset-0 z-50 bg-charcoal/70 flex items-center justify-center p-4">
-          <div className="bg-parchment border border-maroon max-w-xl w-full p-8">
+        <div className="fixed inset-0 z-50 bg-charcoal/80 flex items-center justify-center p-4 fade-in">
+          <div className="bg-parchment border-2 border-maroon max-w-xl w-full p-8 shadow-2xl">
             <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Knowledge Trial · {trial.topic}</div>
             <h3 className="font-serif text-2xl mt-3 text-charcoal">{trial.question}</h3>
             <div className="mt-6 space-y-2">
@@ -159,23 +292,18 @@ function Quest() {
                 const isCorrect = picked !== null && i === trial.answer;
                 const isWrongPick = picked !== null && isPicked && i !== trial.answer;
                 return (
-                  <button
-                    key={i}
-                    onClick={() => answerTrial(i)}
-                    disabled={picked !== null}
+                  <button key={i} onClick={() => answerTrial(i)} disabled={picked !== null}
                     className={`w-full text-left border px-4 py-3 transition font-serif ${
                       isCorrect ? "border-maroon bg-maroon text-parchment" :
                       isWrongPick ? "border-destructive bg-destructive/10 text-destructive" :
                       "border-border hover:border-maroon hover:bg-maroon/5"
-                    }`}
-                  >
-                    <span className="text-xs text-muted-foreground mr-3">{String.fromCharCode(65 + i)}.</span>
-                    {opt}
+                    }`}>
+                    <span className="text-xs text-muted-foreground mr-3">{String.fromCharCode(65 + i)}.</span>{opt}
                   </button>
                 );
               })}
             </div>
-            <p className="mt-5 text-xs text-muted-foreground italic">Jawaban benar: +50 energi & +20 skor. Salah: −1 nyawa.</p>
+            <p className="mt-5 text-xs text-muted-foreground italic">Benar: energi penuh & pertahankan posisi. Salah: −1 nyawa & kembali ke titik awal.</p>
           </div>
         </div>
       )}
@@ -183,23 +311,64 @@ function Quest() {
   );
 }
 
-function Stat({
-  icon: Icon, label, value, max, color, showBar,
-}: {
+function Briefing({ onStart }: { onStart: () => void }) {
+  return (
+    <section className="mt-8 border border-border bg-card p-8 text-center">
+      <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Mission Briefing</div>
+      <h2 className="font-serif text-3xl text-charcoal mt-3">Operasi Goa Selarong</h2>
+      <div className="editorial-rule mt-3 w-24 mx-auto" />
+      <p className="mt-5 text-charcoal/80 font-serif italic max-w-xl mx-auto leading-relaxed">
+        Sang Pangeran membutuhkan kurir gerilya. Susuri lima petak demi lima petak hutan,
+        hindari patroli kolonial, raih logistik tersembunyi, dan tegakkan bendera di posisi musuh.
+        Tiga misi tuntas — Anda diangkat sebagai Pahlawan Nasional.
+      </p>
+      <button onClick={onStart}
+        className="mt-7 inline-flex items-center gap-2 bg-maroon text-parchment px-7 py-3 hover:bg-maroon-deep transition font-serif tracking-wide">
+        <Play className="h-4 w-4" /> Mulai Misi
+      </button>
+    </section>
+  );
+}
+
+function Captured({ score, quote, onRestart }: { score: number; quote: string; onRestart: () => void }) {
+  return (
+    <section className="mt-8 border-2 border-maroon bg-maroon/5 p-10 text-center">
+      <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Captured</div>
+      <h2 className="font-serif text-4xl text-maroon mt-3">Anda Tertangkap</h2>
+      <div className="editorial-rule mt-3 w-24 mx-auto" />
+      <p className="mt-6 text-charcoal font-serif italic text-lg max-w-xl mx-auto">{quote}</p>
+      <p className="mt-4 text-sm text-muted-foreground">Skor akhir: <strong className="text-charcoal">{score}</strong>. Tubuh boleh terkurung, semangat tetap merdeka.</p>
+      <button onClick={onRestart}
+        className="mt-7 inline-flex items-center gap-2 bg-maroon text-parchment px-7 py-3 hover:bg-maroon-deep transition font-serif">
+        <RefreshCcw className="h-4 w-4" /> Mulai dari Awal
+      </button>
+    </section>
+  );
+}
+
+function Legend({ swatch, label }: { swatch: string; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`inline-block w-3 h-3 ${swatch} border border-black/30`} /> {label}
+    </div>
+  );
+}
+
+function Stat({ icon: Icon, label, value, max, color, showBar }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string; value: number; max?: number; color: string; showBar?: boolean;
 }) {
   const pct = max ? (value / max) * 100 : 100;
   return (
-    <div className="border border-border bg-card p-4">
-      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-        <Icon className="h-4 w-4 text-maroon" /> {label}
+    <div className="border border-border bg-card p-3">
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 text-maroon" /> {label}
       </div>
-      <div className="font-serif text-3xl mt-2 text-charcoal">
-        {value}{max && showBar ? <span className="text-base text-muted-foreground"> / {max}</span> : null}
+      <div className="font-serif text-2xl mt-1 text-charcoal">
+        {value}{max ? <span className="text-sm text-muted-foreground"> / {max}</span> : null}
       </div>
       {showBar && (
-        <div className="mt-3 h-1.5 bg-border overflow-hidden">
+        <div className="mt-2 h-1.5 bg-border overflow-hidden">
           <div className={`h-full ${color} transition-all`} style={{ width: `${pct}%` }} />
         </div>
       )}
