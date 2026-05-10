@@ -37,6 +37,7 @@ const ITEM_META: Record<ItemId, { name: string; icon: React.ReactNode; effect: s
   horse: { name: "Kyai Wijayachapa", icon: <Rabbit className="h-4 w-4" />, effect: "Jangkauan +1" },
   sorban: { name: "Sorban Putih", icon: <Shield className="h-4 w-4" />, effect: "1× imun patroli" },
   naskah: { name: "Naskah Dakwah", icon: <Book className="h-4 w-4" />, effect: "Skor kuis ×2" },
+  keris: { name: "Keris Pusaka", icon: <SwordsIcon className="h-4 w-4" />, effect: "Lewati 1 kuis berikutnya" },
 };
 
 function ri(n: number) { return Math.floor(Math.random() * n); }
