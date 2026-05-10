@@ -25,6 +25,7 @@ type GameState = {
   spend: (cost: number) => boolean;
   restoreEnergy: (amount: number) => void;
   loseLife: () => void;
+  gainLife: (n?: number) => void;
   addScore: (n: number) => void;
   addGold: (n: number) => void;
   spendGold: (n: number) => boolean;
