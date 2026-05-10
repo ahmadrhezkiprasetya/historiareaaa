@@ -191,9 +191,13 @@ function Quest() {
   function revealAt(p: Pos, t: Tile[][]) {
     const c = t.map((r) => r.map((x) => ({ ...x })));
     c[p.r][p.c].revealed = true;
-    // sunny: also reveal adjacent. rainy: stays foggy (only stepped tile).
-    if (weather === "sunny") {
-      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+    // sunny: reveal adjacent. rainy: only stepped tile (fog of war).
+    // Diponegoro's "Taktik Gerilya": always reveal at radius `sightRange`.
+    const radius = weather === "sunny" ? Math.max(1, sightRange) : Math.max(0, sightRange - 1);
+    for (let dr = -radius; dr <= radius; dr++) {
+      for (let dc = -radius; dc <= radius; dc++) {
+        const md = Math.abs(dr) + Math.abs(dc);
+        if (md === 0 || md > radius) continue;
         const nr = p.r + dr, nc = p.c + dc;
         if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) c[nr][nc].revealed = true;
       }
@@ -225,10 +229,17 @@ function Quest() {
         triggerClash("trial");
       }
     } else if (tile.kind === "supply") {
-      restoreEnergy(20); addScore(5);
+      // Loot system: 35% Keris item, otherwise +20 energy.
+      const lootKeris = Math.random() < 0.35;
+      if (lootKeris) {
+        addItem("keris"); addScore(5);
+        setFlash("Logistik berisi Keris Pusaka! Lewati 1 kuis berikutnya.");
+      } else {
+        restoreEnergy(20); addScore(5);
+        setFlash("Logistik diamankan. +20 energi, +5 skor.");
+      }
       newTiles[target.r][target.c].kind = "empty";
       setMap((m) => ({ ...m, tiles: newTiles }));
-      setFlash("Logistik diamankan. +20 energi, +5 skor.");
     } else if (tile.kind === "item" && tile.itemId) {
       addItem(tile.itemId);
       setFlash(`Artefak ditemukan: ${ITEM_META[tile.itemId].name}!`);
