@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Feather, Swords } from "lucide-react";
 import { heroes } from "@/lib/heroes-data";
+import { AssetImage } from "@/components/AssetImage";
+import type { AssetKey } from "@/lib/assets";
 
 export const Route = createFileRoute("/")({
   head: () => ({
