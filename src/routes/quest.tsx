@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { MapPin, Sword, Flag, Apple, Trees, RefreshCcw, Heart, Zap, Trophy, Award, ScrollText, Play, Shield, BookOpen as Book, Rabbit, CloudRain, Sun, Sparkles, Eye } from "lucide-react";
+import { MapPin, Sword, Flag, Apple, Trees, RefreshCcw, Heart, Zap, Trophy, Award, ScrollText, Play, Shield, BookOpen as Book, Rabbit, CloudRain, Sun, Sparkles, Eye, Swords as SwordsIcon } from "lucide-react";
 import { useGame, type ItemId, type SkillId, SKILL_COST, MAX_SKILL } from "@/lib/game-context";
 import { quizBank, type QuizQuestion } from "@/lib/quiz-data";
 import { levels, bosses } from "@/lib/battles-data";
 import { ClashAnimation } from "@/components/ClashAnimation";
 import { BossBattle } from "@/components/BossBattle";
 import { motion, AnimatePresence } from "framer-motion";
+
+type HeroChoice = "diponegoro" | "bonjol";
 
 export const Route = createFileRoute("/quest")({
   head: () => ({
