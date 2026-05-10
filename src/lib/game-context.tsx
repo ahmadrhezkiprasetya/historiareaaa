@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 
-export type ItemId = "horse" | "sorban" | "naskah";
+export type ItemId = "horse" | "sorban" | "naskah" | "keris";
 export type MedalId = "first_blood" | "perfect_quiz" | "hutan_clear" | "bonjol_clear" | "magelang_clear" | "pahlawan";
 export type SkillId = "stealth" | "charisma";
 
