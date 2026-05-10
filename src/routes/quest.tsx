@@ -147,19 +147,38 @@ function Quest() {
     setWeather(Math.random() < 0.5 ? "sunny" : "rainy");
   }, []);
 
-  const startGame = () => {
+  const startGame = (choice: HeroChoice) => {
+    setHeroChoice(choice);
     if (lives <= 0 || energy <= 0) reset();
+    if (choice === "bonjol") gainLife(1);
     setWinsInLevel(0);
     setBossLossless(true);
+    // Hard-clear any in-flight modal state to prevent stuck overlays.
+    setTrial(null); setPicked(null); setClash(false); setClashThen(null);
     newRound(level);
     setPhase("playing");
-    setFlash(`Level ${level + 1} dimulai: ${levels[level].name}`);
+    setFlash(
+      choice === "bonjol"
+        ? `Benteng Kokoh: nyawa cadangan diberikan. Babak: ${levels[level].name}`
+        : `Taktik Gerilya: pandangan diperluas. Babak: ${levels[level].name}`
+    );
   };
+
+  const safeReset = useCallback(() => {
+    // Hard reset all transient + global game state — used by "Reset Game" / crash recovery.
+    setTrial(null); setPicked(null); setClash(false); setClashThen(null);
+    setHeroChoice(null); setWinsInLevel(0); setBossLossless(true);
+    reset(); setLevel(0);
+    const m = buildMap(0, null); setMap(m); setPos(m.start); setWeather("sunny");
+    setPhase("briefing");
+    setFlash("");
+    console.log("[Game] safe reset");
+  }, [reset, setLevel]);
 
   useEffect(() => {
     if ((phase === "playing" || phase === "boss") && lives <= 0) {
       setPhase("captured");
-      setTrial(null);
+      setTrial(null); setClash(false); setClashThen(null);
     }
   }, [lives, phase]);
 
