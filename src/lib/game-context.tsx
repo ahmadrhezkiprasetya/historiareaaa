@@ -153,7 +153,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     <GameContext.Provider value={{
       energy, lives, score, level, inventory, medals, playerName,
       gold, skills, articlesRead, dailyDate, shake, liberationProgress,
-      setPlayerName, spend, restoreEnergy, loseLife, addScore,
+      setPlayerName, spend, restoreEnergy, loseLife, gainLife, addScore,
       addGold, spendGold, addItem, useItem, awardMedal, setLevel,
       upgradeSkill, markArticleRead, completeDaily, triggerShake, reset,
     }}>
