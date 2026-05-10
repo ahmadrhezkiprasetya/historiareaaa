@@ -535,22 +535,45 @@ function Quest() {
   );
 }
 
-function Briefing({ onStart, level }: { onStart: () => void; level: number }) {
+function Briefing({ onStart, level }: { onStart: (c: HeroChoice) => void; level: number }) {
   const lv = levels[level];
+  const [choice, setChoice] = useState<HeroChoice | null>(null);
   return (
-    <section className="mt-6 sm:mt-8 border border-border bg-card p-6 sm:p-8 text-center">
-      <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Mission Briefing · Babak {level + 1}</div>
-      <h2 className="font-serif text-charcoal mt-3">{lv.name}</h2>
-      <p className="text-xs italic text-muted-foreground">{lv.subtitle}</p>
+    <section className="mt-6 sm:mt-8 border border-border bg-card p-6 sm:p-8">
+      <div className="text-[11px] uppercase tracking-[0.3em] text-maroon text-center">Mission Briefing · Babak {level + 1}</div>
+      <h2 className="font-serif text-charcoal mt-3 text-center">{lv.name}</h2>
+      <p className="text-xs italic text-muted-foreground text-center">{lv.subtitle}</p>
       <div className="editorial-rule mt-3 w-24 mx-auto" />
-      <p className="mt-5 text-charcoal/80 font-serif italic max-w-xl mx-auto leading-relaxed text-sm sm:text-base">
+      <p className="mt-5 text-charcoal/80 font-serif italic max-w-xl mx-auto leading-relaxed text-sm sm:text-base text-center">
         Susuri petak demi petak, hindari patroli kolonial, raih logistik & artefak.
         Selesaikan dua misi — lalu hadapi Sang Jenderal dalam Tactical Stand-off.
       </p>
-      <button onClick={onStart}
-        className="cursor-sword mt-6 sm:mt-7 inline-flex items-center gap-2 bg-maroon text-parchment px-6 sm:px-7 py-3 hover:bg-maroon-deep transition font-serif tracking-wide active:scale-95 touch-manipulation">
-        <Play className="h-4 w-4" /> Mulai Babak
-      </button>
+
+      <div className="mt-7">
+        <div className="text-[11px] uppercase tracking-[0.3em] text-maroon text-center mb-3">Pilih Roh Pahlawan</div>
+        <div className="grid sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+          {([
+            { id: "diponegoro" as const, name: "Pangeran Diponegoro", ability: "Taktik Gerilya", desc: "Pandangan diperluas — lihat 1 petak lebih jauh." },
+            { id: "bonjol" as const,     name: "Tuanku Imam Bonjol", ability: "Benteng Kokoh", desc: "Memulai dengan +1 nyawa cadangan." },
+          ]).map((h) => (
+            <button key={h.id} onClick={() => setChoice(h.id)}
+              className={`cursor-sword text-left border-2 p-4 transition active:scale-[0.98] touch-manipulation ${
+                choice === h.id ? "border-maroon bg-maroon/5 shadow-md" : "border-border hover:border-maroon/60"
+              }`}>
+              <div className="text-[10px] uppercase tracking-[0.25em] text-maroon">{h.ability}</div>
+              <div className="font-serif text-lg text-charcoal mt-1">{h.name}</div>
+              <p className="text-xs text-muted-foreground mt-1">{h.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-center">
+        <button onClick={() => choice && onStart(choice)} disabled={!choice}
+          className="cursor-sword mt-6 sm:mt-7 inline-flex items-center gap-2 bg-maroon text-parchment px-6 sm:px-7 py-3 hover:bg-maroon-deep transition font-serif tracking-wide active:scale-95 touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed">
+          <Play className="h-4 w-4" /> {choice ? "Mulai Babak" : "Pilih pahlawan dahulu"}
+        </button>
+      </div>
     </section>
   );
 }
