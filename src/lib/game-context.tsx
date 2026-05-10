@@ -100,6 +100,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
   const restoreEnergy = useCallback((amount: number) => setEnergy((e) => Math.min(100, e + amount)), []);
   const loseLife = useCallback(() => { setLives((l) => Math.max(0, l - 1)); setShake((s) => s + 1); }, []);
+  const gainLife = useCallback((n: number = 1) => setLives((l) => Math.min(5, l + n)), []);
   const addScore = useCallback((n: number) => setScore((s) => s + n), []);
   const addGold = useCallback((n: number) => setGold((g) => g + n), []);
   const spendGold = useCallback((n: number) => {
