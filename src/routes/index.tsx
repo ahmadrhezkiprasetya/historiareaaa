@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Feather, Swords } from "lucide-react";
 import { heroes } from "@/lib/heroes-data";
+import { AssetImage } from "@/components/AssetImage";
+import type { AssetKey } from "@/lib/assets";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,13 +37,11 @@ function Home() {
       <section className="mx-auto max-w-7xl px-6 mt-8 grid md:grid-cols-2 gap-px bg-border border border-border">
         {heroes.map((h) => (
           <article key={h.id} className="bg-card p-8 md:p-12 group relative overflow-hidden">
-            <div className={`aspect-[4/5] mb-6 bg-gradient-to-br ${h.portraitGradient} relative overflow-hidden border border-charcoal/20`}>
-              <div className="absolute inset-0 opacity-30 mix-blend-overlay" style={{ backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 60%)' }} />
-              <div className="absolute bottom-4 left-4 right-4 text-parchment">
-                <div className="text-[10px] uppercase tracking-[0.3em] opacity-80">Potret</div>
-                <div className="font-serif text-2xl mt-1">{h.name}</div>
-              </div>
-            </div>
+            <AssetImage
+              assetKey={(`hero_${h.id}`) as AssetKey}
+              alt={`Potret ${h.name}`}
+              className="aspect-[4/5] w-full mb-6 border border-charcoal/20 object-cover"
+            />
             <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground italic">— Arsip Historia, ilustrasi editorial</p>
 
             <div className="mt-6 text-[11px] uppercase tracking-[0.25em] text-maroon">{h.era}</div>

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 
-export type ItemId = "horse" | "sorban" | "naskah";
+export type ItemId = "horse" | "sorban" | "naskah" | "keris";
 export type MedalId = "first_blood" | "perfect_quiz" | "hutan_clear" | "bonjol_clear" | "magelang_clear" | "pahlawan";
 export type SkillId = "stealth" | "charisma";
 
@@ -25,6 +25,7 @@ type GameState = {
   spend: (cost: number) => boolean;
   restoreEnergy: (amount: number) => void;
   loseLife: () => void;
+  gainLife: (n?: number) => void;
   addScore: (n: number) => void;
   addGold: (n: number) => void;
   spendGold: (n: number) => boolean;
@@ -40,7 +41,7 @@ type GameState = {
 };
 
 const STORE = "hist_game_v3";
-const initialInv: Record<ItemId, number> = { horse: 0, sorban: 0, naskah: 0 };
+const initialInv: Record<ItemId, number> = { horse: 0, sorban: 0, naskah: 0, keris: 0 };
 const initialSkills: Skills = { stealth: 0, charisma: 0 };
 export const SKILL_COST = [50, 120, 250]; // cost to reach level 1,2,3 (in score points)
 export const MAX_SKILL = 3;
@@ -99,6 +100,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
   const restoreEnergy = useCallback((amount: number) => setEnergy((e) => Math.min(100, e + amount)), []);
   const loseLife = useCallback(() => { setLives((l) => Math.max(0, l - 1)); setShake((s) => s + 1); }, []);
+  const gainLife = useCallback((n: number = 1) => setLives((l) => Math.min(5, l + n)), []);
   const addScore = useCallback((n: number) => setScore((s) => s + n), []);
   const addGold = useCallback((n: number) => setGold((g) => g + n), []);
   const spendGold = useCallback((n: number) => {
@@ -151,7 +153,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     <GameContext.Provider value={{
       energy, lives, score, level, inventory, medals, playerName,
       gold, skills, articlesRead, dailyDate, shake, liberationProgress,
-      setPlayerName, spend, restoreEnergy, loseLife, addScore,
+      setPlayerName, spend, restoreEnergy, loseLife, gainLife, addScore,
       addGold, spendGold, addItem, useItem, awardMedal, setLevel,
       upgradeSkill, markArticleRead, completeDaily, triggerShake, reset,
     }}>

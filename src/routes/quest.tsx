@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { MapPin, Sword, Flag, Apple, Trees, RefreshCcw, Heart, Zap, Trophy, Award, ScrollText, Play, Shield, BookOpen as Book, Rabbit, CloudRain, Sun, Sparkles, Eye } from "lucide-react";
+import { MapPin, Sword, Flag, Apple, Trees, RefreshCcw, Heart, Zap, Trophy, Award, ScrollText, Play, Shield, BookOpen as Book, Rabbit, CloudRain, Sun, Sparkles, Eye, Swords as SwordsIcon } from "lucide-react";
 import { useGame, type ItemId, type SkillId, SKILL_COST, MAX_SKILL } from "@/lib/game-context";
 import { quizBank, type QuizQuestion } from "@/lib/quiz-data";
 import { levels, bosses } from "@/lib/battles-data";
 import { ClashAnimation } from "@/components/ClashAnimation";
 import { BossBattle } from "@/components/BossBattle";
 import { motion, AnimatePresence } from "framer-motion";
+
+type HeroChoice = "diponegoro" | "bonjol";
 
 export const Route = createFileRoute("/quest")({
   head: () => ({
@@ -35,6 +37,7 @@ const ITEM_META: Record<ItemId, { name: string; icon: React.ReactNode; effect: s
   horse: { name: "Kyai Wijayachapa", icon: <Rabbit className="h-4 w-4" />, effect: "Jangkauan +1" },
   sorban: { name: "Sorban Putih", icon: <Shield className="h-4 w-4" />, effect: "1× imun patroli" },
   naskah: { name: "Naskah Dakwah", icon: <Book className="h-4 w-4" />, effect: "Skor kuis ×2" },
+  keris: { name: "Keris Pusaka", icon: <SwordsIcon className="h-4 w-4" />, effect: "Lewati 1 kuis berikutnya" },
 };
 
 function ri(n: number) { return Math.floor(Math.random() * n); }
@@ -97,9 +100,11 @@ function pickQuiz(charisma: number): QuizQuestion {
 function Quest() {
   const game = useGame();
   const { energy, lives, score, level, inventory, gold, skills,
-    spend, restoreEnergy, loseLife, addScore, addGold, spendGold,
+    spend, restoreEnergy, loseLife, gainLife, addScore, addGold, spendGold,
     addItem, useItem, awardMedal, setLevel, upgradeSkill, triggerShake, reset } = game;
+  void addGold;
 
+  const [heroChoice, setHeroChoice] = useState<HeroChoice | null>(null);
   const [phase, setPhase] = useState<"briefing" | "playing" | "boss" | "captured" | "victory">("briefing");
   const [{ tiles, start, goal }, setMap] = useState(() => buildMap(0, null));
   const [pos, setPos] = useState<Pos>(start);
@@ -115,13 +120,24 @@ function Quest() {
   const _ = goal;
 
   const moveCost = Math.max(4, 10 - skills.stealth * 2);
+  const sightRange = heroChoice === "diponegoro" ? 2 : 1;
 
   const triggerClash = useCallback((then: "trial" | "boss") => {
+    // Keris bypass: if entering a "trial" clash and player owns a Keris,
+    // consume it to skip the encounter entirely.
+    if (then === "trial" && inventory.keris > 0) {
+      useItem("keris");
+      restoreEnergy(30);
+      addScore(5);
+      setFlash("Keris Pusaka berkilat — patroli kabur. Kuis dilewati.");
+      console.log("[Clash] bypassed by Keris");
+      return;
+    }
     console.log("[Clash] trigger requested →", then);
     triggerShake();
     setClashThen(then);
     setClash(true);
-  }, [triggerShake]);
+  }, [triggerShake, inventory.keris, useItem, restoreEnergy, addScore]);
 
   const newRound = useCallback((lv: number) => {
     const dropItem = Math.random() < 0.5 ? ITEM_POOL[ri(ITEM_POOL.length)] : null;
@@ -131,19 +147,38 @@ function Quest() {
     setWeather(Math.random() < 0.5 ? "sunny" : "rainy");
   }, []);
 
-  const startGame = () => {
+  const startGame = (choice: HeroChoice) => {
+    setHeroChoice(choice);
     if (lives <= 0 || energy <= 0) reset();
+    if (choice === "bonjol") gainLife(1);
     setWinsInLevel(0);
     setBossLossless(true);
+    // Hard-clear any in-flight modal state to prevent stuck overlays.
+    setTrial(null); setPicked(null); setClash(false); setClashThen(null);
     newRound(level);
     setPhase("playing");
-    setFlash(`Level ${level + 1} dimulai: ${levels[level].name}`);
+    setFlash(
+      choice === "bonjol"
+        ? `Benteng Kokoh: nyawa cadangan diberikan. Babak: ${levels[level].name}`
+        : `Taktik Gerilya: pandangan diperluas. Babak: ${levels[level].name}`
+    );
   };
+
+  const safeReset = useCallback(() => {
+    // Hard reset all transient + global game state — used by "Reset Game" / crash recovery.
+    setTrial(null); setPicked(null); setClash(false); setClashThen(null);
+    setHeroChoice(null); setWinsInLevel(0); setBossLossless(true);
+    reset(); setLevel(0);
+    const m = buildMap(0, null); setMap(m); setPos(m.start); setWeather("sunny");
+    setPhase("briefing");
+    setFlash("");
+    console.log("[Game] safe reset");
+  }, [reset, setLevel]);
 
   useEffect(() => {
     if ((phase === "playing" || phase === "boss") && lives <= 0) {
       setPhase("captured");
-      setTrial(null);
+      setTrial(null); setClash(false); setClashThen(null);
     }
   }, [lives, phase]);
 
@@ -156,9 +191,13 @@ function Quest() {
   function revealAt(p: Pos, t: Tile[][]) {
     const c = t.map((r) => r.map((x) => ({ ...x })));
     c[p.r][p.c].revealed = true;
-    // sunny: also reveal adjacent. rainy: stays foggy (only stepped tile).
-    if (weather === "sunny") {
-      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+    // sunny: reveal adjacent. rainy: only stepped tile (fog of war).
+    // Diponegoro's "Taktik Gerilya": always reveal at radius `sightRange`.
+    const radius = weather === "sunny" ? Math.max(1, sightRange) : Math.max(0, sightRange - 1);
+    for (let dr = -radius; dr <= radius; dr++) {
+      for (let dc = -radius; dc <= radius; dc++) {
+        const md = Math.abs(dr) + Math.abs(dc);
+        if (md === 0 || md > radius) continue;
         const nr = p.r + dr, nc = p.c + dc;
         if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) c[nr][nc].revealed = true;
       }
@@ -190,10 +229,17 @@ function Quest() {
         triggerClash("trial");
       }
     } else if (tile.kind === "supply") {
-      restoreEnergy(20); addScore(5);
+      // Loot system: 35% Keris item, otherwise +20 energy.
+      const lootKeris = Math.random() < 0.35;
+      if (lootKeris) {
+        addItem("keris"); addScore(5);
+        setFlash("Logistik berisi Keris Pusaka! Lewati 1 kuis berikutnya.");
+      } else {
+        restoreEnergy(20); addScore(5);
+        setFlash("Logistik diamankan. +20 energi, +5 skor.");
+      }
       newTiles[target.r][target.c].kind = "empty";
       setMap((m) => ({ ...m, tiles: newTiles }));
-      setFlash("Logistik diamankan. +20 energi, +5 skor.");
     } else if (tile.kind === "item" && tile.itemId) {
       addItem(tile.itemId);
       setFlash(`Artefak ditemukan: ${ITEM_META[tile.itemId].name}!`);
@@ -295,12 +341,11 @@ function Quest() {
       {phase === "briefing" && <Briefing onStart={startGame} level={level} />}
 
       {phase === "captured" && (
-        <Captured score={score} quote={quote}
-          onRestart={() => { reset(); setLevel(0); setWinsInLevel(0); newRound(0); setPhase("briefing"); }} />
+        <Captured score={score} quote={quote} onRestart={safeReset} />
       )}
 
       {phase === "victory" && (
-        <Victory score={score} onAgain={() => { reset(); setLevel(0); setWinsInLevel(0); newRound(0); setPhase("briefing"); }} />
+        <Victory score={score} onAgain={safeReset} />
       )}
 
       {(phase === "playing" || phase === "boss") && (
@@ -434,9 +479,9 @@ function Quest() {
               </ul>
             </div>
 
-            <button onClick={() => { reset(); setLevel(0); setWinsInLevel(0); newRound(0); setPhase("briefing"); }}
+            <button onClick={safeReset}
               className="cursor-sword w-full inline-flex items-center justify-center gap-2 border border-border px-4 py-2 hover:bg-maroon hover:text-parchment hover:border-maroon transition">
-              <RefreshCcw className="h-4 w-4" /> Mulai Ulang
+              <RefreshCcw className="h-4 w-4" /> Reset Game
             </button>
           </div>
         </section>
@@ -490,22 +535,45 @@ function Quest() {
   );
 }
 
-function Briefing({ onStart, level }: { onStart: () => void; level: number }) {
+function Briefing({ onStart, level }: { onStart: (c: HeroChoice) => void; level: number }) {
   const lv = levels[level];
+  const [choice, setChoice] = useState<HeroChoice | null>(null);
   return (
-    <section className="mt-6 sm:mt-8 border border-border bg-card p-6 sm:p-8 text-center">
-      <div className="text-[11px] uppercase tracking-[0.3em] text-maroon">Mission Briefing · Babak {level + 1}</div>
-      <h2 className="font-serif text-charcoal mt-3">{lv.name}</h2>
-      <p className="text-xs italic text-muted-foreground">{lv.subtitle}</p>
+    <section className="mt-6 sm:mt-8 border border-border bg-card p-6 sm:p-8">
+      <div className="text-[11px] uppercase tracking-[0.3em] text-maroon text-center">Mission Briefing · Babak {level + 1}</div>
+      <h2 className="font-serif text-charcoal mt-3 text-center">{lv.name}</h2>
+      <p className="text-xs italic text-muted-foreground text-center">{lv.subtitle}</p>
       <div className="editorial-rule mt-3 w-24 mx-auto" />
-      <p className="mt-5 text-charcoal/80 font-serif italic max-w-xl mx-auto leading-relaxed text-sm sm:text-base">
+      <p className="mt-5 text-charcoal/80 font-serif italic max-w-xl mx-auto leading-relaxed text-sm sm:text-base text-center">
         Susuri petak demi petak, hindari patroli kolonial, raih logistik & artefak.
         Selesaikan dua misi — lalu hadapi Sang Jenderal dalam Tactical Stand-off.
       </p>
-      <button onClick={onStart}
-        className="cursor-sword mt-6 sm:mt-7 inline-flex items-center gap-2 bg-maroon text-parchment px-6 sm:px-7 py-3 hover:bg-maroon-deep transition font-serif tracking-wide active:scale-95 touch-manipulation">
-        <Play className="h-4 w-4" /> Mulai Babak
-      </button>
+
+      <div className="mt-7">
+        <div className="text-[11px] uppercase tracking-[0.3em] text-maroon text-center mb-3">Pilih Roh Pahlawan</div>
+        <div className="grid sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+          {([
+            { id: "diponegoro" as const, name: "Pangeran Diponegoro", ability: "Taktik Gerilya", desc: "Pandangan diperluas — lihat 1 petak lebih jauh." },
+            { id: "bonjol" as const,     name: "Tuanku Imam Bonjol", ability: "Benteng Kokoh", desc: "Memulai dengan +1 nyawa cadangan." },
+          ]).map((h) => (
+            <button key={h.id} onClick={() => setChoice(h.id)}
+              className={`cursor-sword text-left border-2 p-4 transition active:scale-[0.98] touch-manipulation ${
+                choice === h.id ? "border-maroon bg-maroon/5 shadow-md" : "border-border hover:border-maroon/60"
+              }`}>
+              <div className="text-[10px] uppercase tracking-[0.25em] text-maroon">{h.ability}</div>
+              <div className="font-serif text-lg text-charcoal mt-1">{h.name}</div>
+              <p className="text-xs text-muted-foreground mt-1">{h.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-center">
+        <button onClick={() => choice && onStart(choice)} disabled={!choice}
+          className="cursor-sword mt-6 sm:mt-7 inline-flex items-center gap-2 bg-maroon text-parchment px-6 sm:px-7 py-3 hover:bg-maroon-deep transition font-serif tracking-wide active:scale-95 touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed">
+          <Play className="h-4 w-4" /> {choice ? "Mulai Babak" : "Pilih pahlawan dahulu"}
+        </button>
+      </div>
     </section>
   );
 }
