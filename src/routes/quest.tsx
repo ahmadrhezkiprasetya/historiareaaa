@@ -100,9 +100,11 @@ function pickQuiz(charisma: number): QuizQuestion {
 function Quest() {
   const game = useGame();
   const { energy, lives, score, level, inventory, gold, skills,
-    spend, restoreEnergy, loseLife, addScore, addGold, spendGold,
+    spend, restoreEnergy, loseLife, gainLife, addScore, addGold, spendGold,
     addItem, useItem, awardMedal, setLevel, upgradeSkill, triggerShake, reset } = game;
+  void addGold;
 
+  const [heroChoice, setHeroChoice] = useState<HeroChoice | null>(null);
   const [phase, setPhase] = useState<"briefing" | "playing" | "boss" | "captured" | "victory">("briefing");
   const [{ tiles, start, goal }, setMap] = useState(() => buildMap(0, null));
   const [pos, setPos] = useState<Pos>(start);
@@ -118,13 +120,24 @@ function Quest() {
   const _ = goal;
 
   const moveCost = Math.max(4, 10 - skills.stealth * 2);
+  const sightRange = heroChoice === "diponegoro" ? 2 : 1;
 
   const triggerClash = useCallback((then: "trial" | "boss") => {
+    // Keris bypass: if entering a "trial" clash and player owns a Keris,
+    // consume it to skip the encounter entirely.
+    if (then === "trial" && inventory.keris > 0) {
+      useItem("keris");
+      restoreEnergy(30);
+      addScore(5);
+      setFlash("Keris Pusaka berkilat — patroli kabur. Kuis dilewati.");
+      console.log("[Clash] bypassed by Keris");
+      return;
+    }
     console.log("[Clash] trigger requested →", then);
     triggerShake();
     setClashThen(then);
     setClash(true);
-  }, [triggerShake]);
+  }, [triggerShake, inventory.keris, useItem, restoreEnergy, addScore]);
 
   const newRound = useCallback((lv: number) => {
     const dropItem = Math.random() < 0.5 ? ITEM_POOL[ri(ITEM_POOL.length)] : null;
