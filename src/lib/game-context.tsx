@@ -40,7 +40,7 @@ type GameState = {
 };
 
 const STORE = "hist_game_v3";
-const initialInv: Record<ItemId, number> = { horse: 0, sorban: 0, naskah: 0 };
+const initialInv: Record<ItemId, number> = { horse: 0, sorban: 0, naskah: 0, keris: 0 };
 const initialSkills: Skills = { stealth: 0, charisma: 0 };
 export const SKILL_COST = [50, 120, 250]; // cost to reach level 1,2,3 (in score points)
 export const MAX_SKILL = 3;
