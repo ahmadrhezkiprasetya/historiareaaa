@@ -479,9 +479,9 @@ function Quest() {
               </ul>
             </div>
 
-            <button onClick={() => { reset(); setLevel(0); setWinsInLevel(0); newRound(0); setPhase("briefing"); }}
+            <button onClick={safeReset}
               className="cursor-sword w-full inline-flex items-center justify-center gap-2 border border-border px-4 py-2 hover:bg-maroon hover:text-parchment hover:border-maroon transition">
-              <RefreshCcw className="h-4 w-4" /> Mulai Ulang
+              <RefreshCcw className="h-4 w-4" /> Reset Game
             </button>
           </div>
         </section>
