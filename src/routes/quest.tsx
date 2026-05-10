@@ -341,12 +341,11 @@ function Quest() {
       {phase === "briefing" && <Briefing onStart={startGame} level={level} />}
 
       {phase === "captured" && (
-        <Captured score={score} quote={quote}
-          onRestart={() => { reset(); setLevel(0); setWinsInLevel(0); newRound(0); setPhase("briefing"); }} />
+        <Captured score={score} quote={quote} onRestart={safeReset} />
       )}
 
       {phase === "victory" && (
-        <Victory score={score} onAgain={() => { reset(); setLevel(0); setWinsInLevel(0); newRound(0); setPhase("briefing"); }} />
+        <Victory score={score} onAgain={safeReset} />
       )}
 
       {(phase === "playing" || phase === "boss") && (
