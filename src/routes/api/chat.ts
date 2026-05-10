@@ -15,18 +15,28 @@ Tutup setiap jawaban dengan satu pepatah Minang atau ayat singkat tentang keadil
 Jangan keluar dari peran.`,
 };
 
+const GEMINI_API_KEY = "AIzaSyAedc7vjKtLcNnST0XdtHpUsdQ15DRheiw";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
+      OPTIONS: async () => new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "content-type, authorization",
+        },
+      }),
       POST: async ({ request }) => {
         const cors = {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Headers": "content-type, authorization",
+          "Content-Type": "application/json",
         };
         try {
           const { persona, messages, playerName, gameContext, lang } = await request.json();
-          const KEY = process.env.LOVABLE_API_KEY;
-          if (!KEY) return new Response(JSON.stringify({ error: "Missing LOVABLE_API_KEY" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
 
           const personaSys = SYSTEMS[persona as string] ?? SYSTEMS.diponegoro;
           const langDirective = lang === "en"
@@ -34,26 +44,52 @@ export const Route = createFileRoute("/api/chat")({
             : "Jawab dalam Bahasa Indonesia.";
           const memory = playerName ? `Nama lawan bicara Anda adalah ${playerName}. Sapalah dia dengan namanya sesekali.` : "";
           const ctx = gameContext ? `Konteks permainan saat ini: ${gameContext}.` : "";
+          const systemPrompt = `${personaSys}\n\n${langDirective}\n${memory}\n${ctx}`;
 
-          const sys = `${personaSys}\n\n${langDirective}\n${memory}\n${ctx}`;
+          // Convert OpenAI-style messages -> Gemini contents
+          const contents = (messages as Array<{ role: string; content: string }>).map((m) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+          }));
 
-          const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const upstream = await fetch(GEMINI_URL, {
             method: "POST",
-            headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "google/gemini-3-flash-preview",
-              messages: [{ role: "system", content: sys }, ...messages],
-              stream: true,
+              systemInstruction: { role: "system", parts: [{ text: systemPrompt }] },
+              contents,
+              generationConfig: { temperature: 0.9, maxOutputTokens: 1024 },
             }),
           });
+
           if (!upstream.ok) {
-            if (upstream.status === 429) return new Response(JSON.stringify({ error: "Terlalu banyak permintaan. Coba lagi nanti." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-            if (upstream.status === 402) return new Response(JSON.stringify({ error: "Kredit AI habis." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
-            return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+            const errText = await upstream.text().catch(() => "");
+            console.error("[Gemini] upstream error", upstream.status, errText);
+            return new Response(JSON.stringify({
+              error: `Gemini API error (${upstream.status}): ${errText.slice(0, 300) || upstream.statusText}`,
+            }), { status: upstream.status, headers: cors });
           }
-          return new Response(upstream.body, { headers: { ...cors, "Content-Type": "text/event-stream" } });
+
+          const data = await upstream.json();
+          const text: string =
+            data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") ?? "";
+
+          if (!text) {
+            return new Response(JSON.stringify({
+              error: "Sang pahlawan terdiam — Gemini mengembalikan respon kosong.",
+              raw: data,
+            }), { status: 502, headers: cors });
+          }
+
+          return new Response(JSON.stringify({
+            text,
+            choices: [{ message: { role: "assistant", content: text } }],
+          }), { status: 200, headers: cors });
         } catch (e) {
-          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+          console.error("[Gemini] handler error", e);
+          return new Response(JSON.stringify({
+            error: e instanceof Error ? e.message : "Unknown error",
+          }), { status: 500, headers: cors });
         }
       },
     },
