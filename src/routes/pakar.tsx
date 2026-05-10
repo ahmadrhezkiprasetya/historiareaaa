@@ -87,37 +87,13 @@ function Pakar() {
           lang,
         }),
       });
-      if (!resp.ok || !resp.body) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${resp.status}`);
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(data.error || `HTTP ${resp.status}`);
       }
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let acc = "";
-      setMessages((m) => [...m, { role: "assistant", content: "" }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = buf.indexOf("\n")) !== -1) {
-          let line = buf.slice(0, idx); buf = buf.slice(idx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const j = line.slice(6).trim();
-          if (j === "[DONE]") continue;
-          try {
-            const p = JSON.parse(j);
-            const c = p.choices?.[0]?.delta?.content;
-            if (c) {
-              acc += c;
-              setMessages((m) => m.map((x, i) => i === m.length - 1 ? { ...x, content: acc } : x));
-            }
-          } catch { buf = line + "\n" + buf; break; }
-        }
-      }
+      const content: string = data.text || data.choices?.[0]?.message?.content || "";
+      if (!content) throw new Error(data.error || "Respon kosong dari sang pahlawan.");
+      setMessages((m) => [...m, { role: "assistant", content }]);
     } catch (e) {
       console.error("[Pakar] AI error:", e);
       setMessages((m) => [...m, { role: "assistant", content: "📜 Maaf, Arsip sedang sibuk. Asap dupa pekat dan suara sang pahlawan tertahan. Cobalah bertanya kembali sesaat lagi." }]);
