@@ -11,10 +11,11 @@ const QUOTES = [
 
 export function LoadingScreen() {
   const [show, setShow] = useState(true);
-  const [q] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+  const [q, setQ] = useState(QUOTES[0]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    setQ(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
     const seen = sessionStorage.getItem("hist_loaded");
     if (seen) { setShow(false); return; }
     const t = setTimeout(() => {
